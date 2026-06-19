@@ -1,22 +1,17 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
 import sqlite3, os, datetime
 
- STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-   INDEX_PATH = os.path.join(STATIC_DIR, "index.html")
-   os.makedirs(STATIC_DIR, exist_ok=True)
-
 app = FastAPI()
+
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+INDEX_PATH = os.path.join(STATIC_DIR, "index.html")
+os.makedirs(STATIC_DIR, exist_ok=True)
 
 DB_PATH = os.environ.get("DB_PATH", "clientes.db")
 PUNTOS_BENEFICIO = 10
-
-# ---------------------------------------------------------------------------
-# Base de datos
-# ---------------------------------------------------------------------------
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -55,10 +50,6 @@ def init_db():
 
 init_db()
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def hoy():
     return datetime.date.today().isoformat()
 
@@ -69,7 +60,6 @@ def cliente_dict(row, visitas, beneficios_usados_count):
     tiene_beneficio = beneficios_ganados > beneficios_usados_count
     ultima = visitas[-1]["fecha"] if visitas else None
     gasto_total = sum(v["monto"] for v in visitas)
-
     return {
         "id": row["id"],
         "nombre": row["nombre"],
@@ -86,10 +76,6 @@ def cliente_dict(row, visitas, beneficios_usados_count):
         "visitas": [dict(v) for v in visitas],
     }
 
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
 class ClienteCreate(BaseModel):
     nombre: str
     telefono: str
@@ -101,10 +87,6 @@ class VisitaCreate(BaseModel):
 
 class BeneficioUsar(BaseModel):
     sucursal: Optional[str] = "general"
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
 
 @app.get("/api/clientes/buscar")
 def buscar_cliente(telefono: str):
@@ -125,7 +107,6 @@ def buscar_cliente(telefono: str):
     conn.close()
     return cliente_dict(row, visitas, bu)
 
-
 @app.post("/api/clientes", status_code=201)
 def crear_cliente(data: ClienteCreate):
     tel = data.telefono.strip()
@@ -136,7 +117,7 @@ def crear_cliente(data: ClienteCreate):
     ).fetchone()
     if existing:
         conn.close()
-        raise HTTPException(status_code=409, detail="Teléfono ya registrado")
+        raise HTTPException(status_code=409, detail="Telefono ya registrado")
     cur = conn.execute(
         "INSERT INTO clientes (nombre, telefono, fecha_reg) VALUES (?,?,?)",
         (data.nombre.strip(), tel, hoy())
@@ -153,7 +134,6 @@ def crear_cliente(data: ClienteCreate):
     ).fetchall()
     conn.close()
     return cliente_dict(row, visitas, 0)
-
 
 @app.post("/api/clientes/{cliente_id}/visita")
 def registrar_visita(cliente_id: int, data: VisitaCreate):
@@ -193,7 +173,6 @@ def registrar_visita(cliente_id: int, data: VisitaCreate):
     result["nueva_visita"] = True
     return result
 
-
 @app.post("/api/clientes/{cliente_id}/usar-beneficio")
 def usar_beneficio(cliente_id: int, data: BeneficioUsar):
     conn = get_db()
@@ -222,7 +201,6 @@ def usar_beneficio(cliente_id: int, data: BeneficioUsar):
     conn.close()
     return cliente_dict(row, visitas, bu2)
 
-
 @app.get("/api/admin/resumen")
 def resumen():
     conn = get_db()
@@ -245,11 +223,9 @@ def resumen():
         "top_clientes": [dict(r) for r in top],
     }
 
-
-# Sirve el frontend
-   @app.get("/", response_class=HTMLResponse)
-   def serve_index():
-       if os.path.exists(INDEX_PATH):
-           with open(INDEX_PATH, "r", encoding="utf-8") as f:
-               return HTMLResponse(content=f.read())
-       return HTMLResponse(content="<h1>OK</h1>", status_code=200)
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    if os.path.exists(INDEX_PATH):
+        with open(INDEX_PATH, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>App Schwencke OK - sube static/index.html</h1>")
