@@ -2,21 +2,21 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
-import os, datetime
+import os, datetime, hashlib
 
 app = FastAPI()
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 INDEX_PATH = os.path.join(STATIC_DIR, "index.html")
+CAJERO_PATH = os.path.join(STATIC_DIR, "cajero.html")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
 PUNTOS_BENEFICIO = 10
-
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+SECRET = os.environ.get("CODIGO_SECRET", "schwencke2025")
 
 def get_db():
     import psycopg2
-    import psycopg2.extras
     conn = psycopg2.connect(DATABASE_URL)
     return conn
 
@@ -58,6 +58,13 @@ if DATABASE_URL:
 def hoy():
     return datetime.date.today().isoformat()
 
+def generar_codigo_dia():
+    """Genera un código de 4 dígitos basado en la fecha + secret. Cambia cada día."""
+    base = f"{hoy()}-{SECRET}"
+    hash_val = hashlib.sha256(base.encode()).hexdigest()
+    numero = int(hash_val[:8], 16) % 10000
+    return f"{numero:04d}"
+
 def fetch_all(cur):
     cols = [d[0] for d in cur.description]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -94,13 +101,20 @@ class ClienteCreate(BaseModel):
     nombre: str
     telefono: str
     sucursal: Optional[str] = "general"
+    codigo: str
 
 class VisitaCreate(BaseModel):
     sucursal: Optional[str] = "general"
     monto: Optional[int] = 0
+    codigo: str
 
 class BeneficioUsar(BaseModel):
     sucursal: Optional[str] = "general"
+
+@app.get("/api/codigo-hoy")
+def codigo_hoy():
+    """Solo para el panel del cajero"""
+    return {"codigo": generar_codigo_dia(), "fecha": hoy()}
 
 @app.get("/api/clientes/buscar")
 def buscar_cliente(telefono: str):
@@ -121,6 +135,8 @@ def buscar_cliente(telefono: str):
 
 @app.post("/api/clientes", status_code=201)
 def crear_cliente(data: ClienteCreate):
+    if data.codigo != generar_codigo_dia():
+        raise HTTPException(status_code=403, detail="Código incorrecto")
     tel = data.telefono.strip()
     conn = get_db()
     cur = conn.cursor()
@@ -147,6 +163,8 @@ def crear_cliente(data: ClienteCreate):
 
 @app.post("/api/clientes/{cliente_id}/visita")
 def registrar_visita(cliente_id: int, data: VisitaCreate):
+    if data.codigo != generar_codigo_dia():
+        raise HTTPException(status_code=403, detail="Código incorrecto")
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT * FROM clientes WHERE id = %s", (cliente_id,))
@@ -232,11 +250,18 @@ def resumen():
         "top_clientes": top,
     }
 
+@app.get("/cajero", response_class=HTMLResponse)
+def serve_cajero():
+    if os.path.exists(CAJERO_PATH):
+        with open(CAJERO_PATH, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h2>Falta static/cajero.html</h2>")
+
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
     if not DATABASE_URL:
-        return HTMLResponse(content="<h2>Falta variable DATABASE_URL — agrega PostgreSQL en Railway</h2>")
+        return HTMLResponse(content="<h2>Falta variable DATABASE_URL</h2>")
     if os.path.exists(INDEX_PATH):
         with open(INDEX_PATH, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
-    return HTMLResponse(content="<h1>Schwencke Fidelizacion OK — sube static/index.html</h1>")
+    return HTMLResponse(content="<h1>Schwencke Fidelizacion OK</h1>")

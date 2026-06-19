@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schwencke — Panel cajero</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f4;color:#111;min-height:100vh;}
+  .wrap{max-width:500px;margin:0 auto;padding:24px 20px;}
+  .header{background:#111;color:#fff;border-radius:12px;padding:20px 24px;margin-bottom:20px;text-align:center;}
+  .header h1{font-size:16px;font-weight:700;letter-spacing:0.04em;}
+  .header p{font-size:12px;color:#aaa;margin-top:3px;}
+  .card{background:#fff;border-radius:12px;padding:24px;margin-bottom:16px;border:0.5px solid #e0e0e0;}
+  .card-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+  .codigo-grande{font-size:64px;font-weight:800;letter-spacing:0.2em;text-align:center;line-height:1;margin:8px 0;}
+  .fecha{font-size:13px;color:#888;text-align:center;margin-top:6px;}
+  .instruccion{font-size:14px;color:#444;line-height:1.6;text-align:center;margin-top:12px;padding:12px;background:#f9f9f9;border-radius:8px;}
+  .metricas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .metrica{background:#f4f4f4;border-radius:8px;padding:14px;text-align:center;}
+  .metrica-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+  .metrica-valor{font-size:26px;font-weight:700;}
+  .top-lista{margin-top:4px;}
+  .top-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid #f0f0f0;}
+  .top-item:last-child{border-bottom:none;}
+  .num{font-size:12px;color:#bbb;width:16px;}
+  .top-nombre{flex:1;font-size:14px;font-weight:500;}
+  .top-tel{font-size:12px;color:#888;}
+  .top-visitas{font-size:14px;font-weight:700;}
+  .badge-premio{background:#edf5ed;color:#2d6a2d;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;}
+  .refresh-btn{width:100%;padding:12px;font-size:14px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:4px;}
+  .refresh-btn:hover{opacity:0.85;}
+  h2{font-size:15px;font-weight:600;margin-bottom:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>🌭 SCHWENCKE EMPORIO</h1>
+    <p>Panel del cajero</p>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Código del día</div>
+    <div class="codigo-grande" id="codigo">----</div>
+    <div class="fecha" id="fecha-hoy"></div>
+    <div class="instruccion">Díselo al cliente cuando te lo pida al escanear el QR.<br>Cambia automáticamente a las 00:00.</div>
+  </div>
+
+  <div class="card">
+    <h2>Resumen de hoy</h2>
+    <div class="metricas">
+      <div class="metrica"><div class="metrica-label">Clientes</div><div class="metrica-valor" id="m-clientes">—</div></div>
+      <div class="metrica"><div class="metrica-label">Visitas hoy</div><div class="metrica-valor" id="m-visitas">—</div></div>
+      <div class="metrica"><div class="metrica-label">Total visitas</div><div class="metrica-valor" id="m-total">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Clientes más frecuentes</h2>
+    <div class="top-lista" id="top-lista">Cargando...</div>
+  </div>
+
+  <button class="refresh-btn" onclick="cargarDatos()">↻ Actualizar</button>
+</div>
+
+<script>
+async function cargarCodigo(){
+  try{
+    const r=await fetch('/api/codigo-hoy');
+    const d=await r.json();
+    document.getElementById('codigo').textContent=d.codigo;
+    const f=new Date(d.fecha+'T12:00:00');
+    document.getElementById('fecha-hoy').textContent=f.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
+  }catch(e){document.getElementById('codigo').textContent='Error';}
+}
+
+async function cargarResumen(){
+  try{
+    const r=await fetch('/api/admin/resumen');
+    const d=await r.json();
+    document.getElementById('m-clientes').textContent=d.total_clientes;
+    document.getElementById('m-visitas').textContent=d.visitas_hoy;
+    document.getElementById('m-total').textContent=d.total_visitas;
+    const lista=document.getElementById('top-lista');
+    if(!d.top_clientes.length){lista.innerHTML='<p style="font-size:13px;color:#aaa;text-align:center;padding:12px;">Aún no hay clientes</p>';return;}
+    lista.innerHTML=d.top_clientes.map((c,i)=>`
+      <div class="top-item">
+        <span class="num">${i+1}</span>
+        <div style="flex:1;min-width:0;">
+          <div class="top-nombre">${c.nombre}</div>
+          <div class="top-tel">${c.telefono}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="top-visitas">${c.total_visitas} visitas</div>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){console.error(e);}
+}
+
+function cargarDatos(){cargarCodigo();cargarResumen();}
+cargarDatos();
+setInterval(cargarDatos, 60000);
+</script>
+</body>
+</html>
