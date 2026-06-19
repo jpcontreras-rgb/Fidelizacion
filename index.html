@@ -6,29 +6,22 @@
 <title>Schwencke Emporio — Club de clientes</title>
 <meta name="theme-color" content="#111111">
 <style>
-  :root {
-    --negro:#111111;--blanco:#ffffff;--gris-claro:#f4f4f4;--gris-borde:#e0e0e0;
-    --gris-texto:#666666;--verde:#2d6a2d;--verde-claro:#edf5ed;
-    --amarillo-claro:#fef8ee;--rojo:#c0392b;--radio:12px;--radio-sm:8px;
-  }
+  :root{--negro:#111;--blanco:#fff;--gris-claro:#f4f4f4;--gris-borde:#e0e0e0;--gris-texto:#666;
+    --verde:#2d6a2d;--verde-claro:#edf5ed;--amarillo-claro:#fef8ee;--azul-claro:#eef3ff;--rojo:#c0392b;
+    --radio:12px;--radio-sm:8px;}
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{min-height:100vh;background:var(--gris-claro);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--negro);}
   .app{max-width:420px;margin:0 auto;min-height:100vh;background:var(--blanco);display:flex;flex-direction:column;}
   .header{background:var(--negro);color:var(--blanco);padding:20px 24px 18px;text-align:center;}
   .header-logo{width:44px;height:44px;background:var(--blanco);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;}
   .header h1{font-size:18px;font-weight:700;letter-spacing:0.04em;}
-  .header p{font-size:12px;color:#aaaaaa;margin-top:3px;}
+  .header p{font-size:12px;color:#aaa;margin-top:3px;}
   .content{flex:1;padding:24px 20px;}
   .view{display:none;}.view.active{display:block;}
   .titulo{font-size:22px;font-weight:700;margin-bottom:6px;}
   .subtitulo{font-size:14px;color:var(--gris-texto);margin-bottom:24px;line-height:1.5;}
   label{font-size:13px;color:var(--gris-texto);display:block;margin-bottom:6px;}
-  input[type="tel"],input[type="text"],input[type="number"]{
-    width:100%;padding:13px 14px;font-size:16px;
-    border:1.5px solid var(--gris-borde);border-radius:var(--radio-sm);
-    background:var(--blanco);color:var(--negro);outline:none;height:44px;
-    transition:border-color 0.15s;-webkit-appearance:none;
-  }
+  input[type="tel"],input[type="text"],input[type="number"]{width:100%;padding:13px 14px;font-size:16px;border:1.5px solid var(--gris-borde);border-radius:var(--radio-sm);background:var(--blanco);color:var(--negro);outline:none;height:44px;transition:border-color 0.15s;-webkit-appearance:none;}
   input:focus{border-color:var(--negro);}
   .campo{margin-bottom:14px;}
   .btn{width:100%;padding:14px;font-size:16px;font-weight:600;border:none;border-radius:var(--radio-sm);cursor:pointer;transition:opacity 0.15s,transform 0.1s;}
@@ -52,20 +45,27 @@
   .metrica-valor.sm{font-size:15px;padding-top:3px;}
   .puntos-titulo{font-size:13px;color:var(--gris-texto);margin-bottom:10px;}
   .puntos-titulo strong{color:var(--negro);}
-  .dots{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px;}
-  .dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
+  .dots{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;position:relative;}
   .dot-lleno{background:var(--negro);color:var(--blanco);}
-  .dot-vacio{background:var(--gris-claro);color:#bbbbbb;border:1.5px solid var(--gris-borde);}
-  .alerta{border-radius:var(--radio-sm);padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;}
+  .dot-vacio{background:var(--gris-claro);color:#bbb;border:1.5px solid var(--gris-borde);}
+  .dot-postre{background:#f5a623;color:#fff;border:none;}
+  .dot-promo{background:#2d6a2d;color:#fff;border:none;}
+  .dot-legend{display:flex;gap:14px;margin-top:6px;flex-wrap:wrap;}
+  .dot-legend span{font-size:11px;color:var(--gris-texto);display:flex;align-items:center;gap:4px;}
+  .dot-mini{width:12px;height:12px;border-radius:50%;display:inline-block;}
+  .alerta{border-radius:var(--radio-sm);padding:14px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px;}
   .alerta-verde{background:var(--verde-claro);}
   .alerta-amarilla{background:var(--amarillo-claro);border:1.5px solid #f5a623;}
+  .alerta-azul{background:var(--azul-claro);border:1.5px solid #5b8dee;}
   .alerta-icon{font-size:22px;flex-shrink:0;margin-top:1px;}
   .alerta-titulo{font-size:14px;font-weight:700;}
   .alerta-texto{font-size:13px;margin-top:2px;}
   .alerta-verde .alerta-titulo,.alerta-verde .alerta-texto{color:var(--verde);}
   .alerta-amarilla .alerta-titulo,.alerta-amarilla .alerta-texto{color:#8a5a00;}
-  .divider{border:none;border-top:1px solid var(--gris-borde);margin:18px 0;}
-  .privacidad{font-size:11px;color:#bbbbbb;text-align:center;margin-top:14px;line-height:1.5;}
+  .alerta-azul .alerta-titulo,.alerta-azul .alerta-texto{color:#1a3a8a;}
+  .divider{border:none;border-top:1px solid var(--gris-borde);margin:16px 0;}
+  .privacidad{font-size:11px;color:#bbb;text-align:center;margin-top:14px;line-height:1.5;}
   .loading{text-align:center;padding:40px 0;}
   .spinner{width:32px;height:32px;border:3px solid var(--gris-borde);border-top-color:var(--negro);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 12px;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -73,15 +73,7 @@
   .sucursal-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
   .chip{padding:8px 14px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--gris-borde);background:var(--blanco);color:var(--gris-texto);transition:all 0.15s;}
   .chip.activo{background:var(--negro);color:var(--blanco);border-color:var(--negro);}
-  /* Código del día */
-  .codigo-box{background:var(--negro);color:var(--blanco);border-radius:var(--radio);padding:16px;text-align:center;margin-bottom:20px;}
-  .codigo-hint{font-size:12px;color:#aaa;margin-bottom:6px;}
-  .codigo-input{
-    width:100%;padding:14px;font-size:28px;font-weight:700;letter-spacing:0.3em;
-    text-align:center;border:2px solid var(--gris-borde);border-radius:var(--radio-sm);
-    background:var(--blanco);color:var(--negro);outline:none;height:60px;
-    -webkit-appearance:none;
-  }
+  .codigo-input{width:100%;padding:14px;font-size:32px;font-weight:700;letter-spacing:0.3em;text-align:center;border:1.5px solid var(--gris-borde);border-radius:var(--radio-sm);background:var(--blanco);color:var(--negro);outline:none;height:64px;-webkit-appearance:none;}
   .codigo-input:focus{border-color:var(--negro);}
 </style>
 </head>
@@ -94,7 +86,6 @@
   </div>
   <div class="content">
 
-    <!-- VIEW: TELÉFONO -->
     <div class="view active" id="view-telefono">
       <p class="titulo">Hola 👋</p>
       <p class="subtitulo">Ingresa tu teléfono para ver tu tarjeta de puntos.</p>
@@ -107,20 +98,18 @@
       <p class="privacidad">¿Primera vez? Te registramos en el siguiente paso.</p>
     </div>
 
-    <!-- VIEW: CÓDIGO DEL DÍA -->
     <div class="view" id="view-codigo">
       <p class="titulo">Código del día</p>
       <p class="subtitulo">Pídele al cajero el código de hoy e ingrésalo para registrar tu visita.</p>
       <div class="campo">
         <label for="inp-codigo">Código de 4 dígitos</label>
-        <input type="number" id="inp-codigo" placeholder="0000" inputmode="numeric" maxlength="4" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)" class="codigo-input">
+        <input type="number" id="inp-codigo" placeholder="0000" inputmode="numeric" class="codigo-input" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
       </div>
-      <button class="btn btn-negro" onclick="validarCodigo()">Validar y continuar</button>
+      <button class="btn btn-negro" onclick="validarCodigo()">Validar</button>
       <button class="btn btn-outline" onclick="volverTelefono()">← Volver</button>
       <p class="error-msg" id="err-codigo"></p>
     </div>
 
-    <!-- VIEW: REGISTRO -->
     <div class="view" id="view-registro">
       <p class="titulo">Bienvenido/a</p>
       <p class="subtitulo">Solo necesitamos tu nombre para crear tu tarjeta.</p>
@@ -142,12 +131,10 @@
       <p class="privacidad">Al registrarte aceptas que guardemos tu nombre y teléfono para gestionar tus puntos.</p>
     </div>
 
-    <!-- VIEW: LOADING -->
     <div class="view" id="view-loading">
       <div class="loading"><div class="spinner"></div><p>Un momento...</p></div>
     </div>
 
-    <!-- VIEW: TARJETA -->
     <div class="view" id="view-tarjeta">
       <div id="tarjeta-contenido"></div>
     </div>
@@ -156,15 +143,14 @@
 </div>
 
 <script>
-const API = '';
-let sucursalSeleccionada = 'vina';
-let telefonoActual = '';
-let codigoActual = '';
-let clienteEncontrado = null;
+const API='';
+let sucursalSeleccionada='vina';
+let telefonoActual='';
+let codigoActual='';
 
 function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');}
 function selSucursal(el){document.querySelectorAll('.chip').forEach(c=>c.classList.remove('activo'));el.classList.add('activo');sucursalSeleccionada=el.dataset.suc;}
-function volverTelefono(){document.getElementById('err-tel').textContent='';document.getElementById('err-codigo').textContent='';clienteEncontrado=null;show('view-telefono');}
+function volverTelefono(){document.getElementById('err-tel').textContent='';document.getElementById('err-codigo').textContent='';show('view-telefono');}
 
 function irACodigo(){
   const tel=document.getElementById('inp-tel').value.trim().replace(/\s/g,'');
@@ -172,9 +158,9 @@ function irACodigo(){
   err.textContent='';
   if(tel.length<7){err.textContent='Ingresa un teléfono válido.';return;}
   telefonoActual=tel;
-  show('view-codigo');
   document.getElementById('inp-codigo').value='';
   document.getElementById('err-codigo').textContent='';
+  show('view-codigo');
 }
 
 async function validarCodigo(){
@@ -186,17 +172,11 @@ async function validarCodigo(){
   show('view-loading');
   try{
     const res=await fetch(`${API}/api/clientes/buscar?telefono=${encodeURIComponent(telefonoActual)}`);
-    if(res.status===404){
-      clienteEncontrado=null;
-      show('view-registro');
-      return;
-    }
+    if(res.status===404){show('view-registro');return;}
     if(!res.ok)throw new Error();
     const cliente=await res.json();
-    clienteEncontrado=cliente;
     const vis=await fetch(`${API}/api/clientes/${cliente.id}/visita`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sucursal:'general',monto:0,codigo:codigoActual})
     });
     if(vis.status===403){show('view-codigo');err.textContent='Código incorrecto. Pídelo al cajero.';return;}
@@ -204,10 +184,7 @@ async function validarCodigo(){
     const data=await vis.json();
     renderTarjeta(data,data.nueva_visita);
     show('view-tarjeta');
-  }catch(e){
-    show('view-codigo');
-    err.textContent='Error de conexión. Intenta de nuevo.';
-  }
+  }catch(e){show('view-codigo');err.textContent='Error de conexión. Intenta de nuevo.';}
 }
 
 async function registrar(){
@@ -218,25 +195,19 @@ async function registrar(){
   show('view-loading');
   try{
     const res=await fetch(`${API}/api/clientes`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({nombre,telefono:telefonoActual,sucursal:sucursalSeleccionada,codigo:codigoActual})
     });
-    if(res.status===403){err.textContent='Código incorrecto. Pídelo al cajero.';show('view-registro');return;}
+    if(res.status===403){err.textContent='Código incorrecto.';show('view-registro');return;}
     if(res.status===409){err.textContent='Ese teléfono ya está registrado.';show('view-registro');return;}
     if(!res.ok)throw new Error();
     const data=await res.json();
     renderTarjeta(data,true);
     show('view-tarjeta');
-  }catch(e){
-    show('view-registro');
-    err.textContent='No se pudo registrar. Intenta de nuevo.';
-  }
+  }catch(e){show('view-registro');err.textContent='No se pudo registrar. Intenta de nuevo.';}
 }
 
 function iniciales(n){return n.split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();}
-function diasDesde(f){if(!f)return null;return Math.floor((new Date()-new Date(f+'T12:00:00'))/86400000);}
-
 function nivelClase(v){
   if(v>=20)return['VIP','nivel-vip'];
   if(v>=10)return['Cliente frecuente','nivel-frecuente'];
@@ -246,27 +217,47 @@ function nivelClase(v){
 
 function renderTarjeta(c,nuevaVisita){
   const[nivelNombre,nivelClaseStr]=nivelClase(c.total_visitas);
-  const dias=diasDesde(c.ultima_visita);
-  const diasStr=dias===0?'Hoy':dias===1?'Ayer':`Hace ${dias} d.`;
   const pts=c.pts_ciclo;
   const total=c.puntos_para_beneficio;
-  const dots=Array.from({length:total}).map((_,i)=>`<div class="dot ${i<pts?'dot-lleno':'dot-vacio'}">${i<pts?'✓':i+1}</div>`).join('');
-  const alertaNueva=nuevaVisita?`<div class="alerta alerta-verde"><div class="alerta-icon">✅</div><div><div class="alerta-titulo">¡Visita registrada!</div><div class="alerta-texto">Sumaste 1 punto. Llevas ${c.total_visitas} ${c.total_visitas===1?'visita':'visitas'}.</div></div></div>`:'';
-  const alertaBeneficio=c.tiene_beneficio?`<div class="alerta alerta-amarilla"><div class="alerta-icon">🎁</div><div><div class="alerta-titulo">¡Tienes un premio!</div><div class="alerta-texto">Muéstrale esta pantalla al cajero para canjearlo.</div></div></div>`:'';
+
+  // Dots con marcas especiales en visita 5 y 10
+  const dots=Array.from({length:total}).map((_,i)=>{
+    const numVisita=i+1;
+    const lleno=i<pts;
+    const esPostre=numVisita===5;
+    const esPromo=numVisita===10;
+    if(lleno){
+      if(esPostre)return`<div class="dot dot-postre" title="Postre gratis">🍮</div>`;
+      if(esPromo)return`<div class="dot dot-promo" title="Promoción con bebida">🎁</div>`;
+      return`<div class="dot dot-lleno">✓</div>`;
+    }else{
+      if(esPostre)return`<div class="dot dot-vacio" style="border-color:#f5a623;color:#f5a623;" title="Postre en visita 5">5</div>`;
+      if(esPromo)return`<div class="dot dot-vacio" style="border-color:#2d6a2d;color:#2d6a2d;" title="Promo en visita 10">10</div>`;
+      return`<div class="dot dot-vacio">${numVisita}</div>`;
+    }
+  }).join('');
+
+  const alertaNueva=nuevaVisita?`<div class="alerta alerta-verde"><div class="alerta-icon">✅</div><div><div class="alerta-titulo">¡Visita registrada!</div><div class="alerta-texto">Sumaste 1 punto. Llevas ${c.total_visitas} en total.</div></div></div>`:'';
+  const alertaPostre=c.tiene_postre?`<div class="alerta alerta-amarilla"><div class="alerta-icon">🍮</div><div><div class="alerta-titulo">¡Tienes un postre gratis!</div><div class="alerta-texto">Muéstrale esta pantalla al cajero para canjearlo.</div></div></div>`:'';
+  const alertaPromo=c.tiene_promocion?`<div class="alerta alerta-azul"><div class="alerta-icon">🎁</div><div><div class="alerta-titulo">¡Tienes una promoción con bebida!</div><div class="alerta-texto">Muéstrale esta pantalla al cajero para canjearlo.</div></div></div>`:'';
+
   document.getElementById('tarjeta-contenido').innerHTML=`
-    ${alertaNueva}${alertaBeneficio}
+    ${alertaNueva}${alertaPostre}${alertaPromo}
     <div class="tarjeta-header">
       <div class="avatar">${iniciales(c.nombre)}</div>
       <div><div class="tarjeta-nombre">${c.nombre}</div><span class="nivel-badge ${nivelClaseStr}">${nivelNombre}</span></div>
     </div>
     <div class="metricas">
       <div class="metrica"><div class="metrica-label">Visitas totales</div><div class="metrica-valor">${c.total_visitas}</div></div>
-      <div class="metrica"><div class="metrica-label">Última visita</div><div class="metrica-valor sm">${diasStr}</div></div>
+      <div class="metrica"><div class="metrica-label">En este ciclo</div><div class="metrica-valor">${pts}<span style="font-size:14px;color:#888;">/${total}</span></div></div>
     </div>
     <hr class="divider">
-    <p class="puntos-titulo">Progreso — <strong>${pts} de ${total}</strong> visitas para tu próximo premio</p>
+    <p class="puntos-titulo" style="margin-bottom:10px;">Progreso hacia tus premios</p>
     <div class="dots">${dots}</div>
-    ${c.beneficios_ganados>0?`<p style="font-size:12px;color:#aaa;margin-top:4px;">Premios ganados: ${c.beneficios_ganados} · Usados: ${c.beneficios_usados}</p>`:''}
+    <div class="dot-legend">
+      <span><div class="dot-mini" style="background:#f5a623;"></div>Postre gratis (visita 5)</span>
+      <span><div class="dot-mini" style="background:#2d6a2d;"></div>Promo con bebida (visita 10)</span>
+    </div>
     <hr class="divider">
     <button class="btn btn-outline" onclick="volverTelefono()" style="margin-top:0;">Cerrar</button>
     <p class="privacidad" style="margin-top:12px;">Schwencke Emporio · Viña del Mar · Parque Arauco · MUT</p>

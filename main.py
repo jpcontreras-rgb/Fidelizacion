@@ -12,8 +12,10 @@ CAJERO_PATH = os.path.join(STATIC_DIR, "cajero.html")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
 PUNTOS_BENEFICIO = 10
+PUNTOS_POSTRE = 5
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 SECRET = os.environ.get("CODIGO_SECRET", "schwencke2025")
+MINUTOS_ENTRE_VISITAS = 60
 
 def get_db():
     import psycopg2
@@ -36,18 +38,29 @@ def init_db():
             id         SERIAL PRIMARY KEY,
             cliente_id INTEGER NOT NULL REFERENCES clientes(id),
             fecha      TEXT NOT NULL,
+            hora       TEXT NOT NULL DEFAULT '00:00',
             sucursal   TEXT NOT NULL DEFAULT 'general',
             monto      INTEGER DEFAULT 0
         )
     """)
+    # Agregar columna hora si no existe (para bases de datos existentes)
+    try:
+        cur.execute("ALTER TABLE visitas ADD COLUMN IF NOT EXISTS hora TEXT NOT NULL DEFAULT '00:00'")
+    except:
+        pass
     cur.execute("""
         CREATE TABLE IF NOT EXISTS beneficios_usados (
             id         SERIAL PRIMARY KEY,
             cliente_id INTEGER NOT NULL REFERENCES clientes(id),
             fecha      TEXT NOT NULL,
+            tipo       TEXT NOT NULL DEFAULT 'promocion',
             sucursal   TEXT NOT NULL DEFAULT 'general'
         )
     """)
+    try:
+        cur.execute("ALTER TABLE beneficios_usados ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'promocion'")
+    except:
+        pass
     conn.commit()
     cur.close()
     conn.close()
@@ -58,8 +71,10 @@ if DATABASE_URL:
 def hoy():
     return datetime.date.today().isoformat()
 
+def ahora():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
 def generar_codigo_dia():
-    """Genera un código de 4 dígitos basado en la fecha + secret. Cambia cada día."""
     base = f"{hoy()}-{SECRET}"
     hash_val = hashlib.sha256(base.encode()).hexdigest()
     numero = int(hash_val[:8], 16) % 10000
@@ -74,26 +89,59 @@ def fetch_one(cur):
     row = cur.fetchone()
     return dict(zip(cols, row)) if row else None
 
-def cliente_dict(row, visitas, beneficios_usados_count):
+def minutos_desde(fecha_hora_str):
+    try:
+        dt = datetime.datetime.strptime(fecha_hora_str, "%Y-%m-%d %H:%M")
+        diff = datetime.datetime.now() - dt
+        return diff.total_seconds() / 60
+    except:
+        return 999
+
+def calcular_premios(total_visitas, beneficios_usados_list):
+    """Calcula postres y promociones ganadas vs usadas."""
+    postres_ganados = total_visitas // PUNTOS_POSTRE
+    promociones_ganadas = total_visitas // PUNTOS_BENEFICIO
+
+    postres_usados = sum(1 for b in beneficios_usados_list if b.get("tipo") == "postre")
+    promociones_usadas = sum(1 for b in beneficios_usados_list if b.get("tipo") == "promocion")
+
+    # Descontar postres de los que serían promociones
+    # Cada 10 visitas: 1 postre (en visita 5) + 1 promoción (en visita 10)
+    # Pero en visita 10 ya se ganó el postre de visita 5, así que:
+    postres_netos = postres_ganados - (promociones_ganadas)  # en cada ciclo de 10, visita 5 da postre
+    postres_netos = max(postres_netos, 0)
+
+    tiene_postre = (postres_ganados - postres_usados - promociones_ganadas) > 0
+    tiene_promocion = (promociones_ganadas - promociones_usadas) > 0
+
+    pts_en_ciclo = total_visitas % PUNTOS_BENEFICIO
+
+    return {
+        "pts_ciclo": pts_en_ciclo,
+        "puntos_para_beneficio": PUNTOS_BENEFICIO,
+        "postres_ganados": postres_ganados,
+        "postres_usados": postres_usados,
+        "promociones_ganadas": promociones_ganadas,
+        "promociones_usadas": promociones_usadas,
+        "tiene_postre": tiene_postre,
+        "tiene_promocion": tiene_promocion,
+    }
+
+def cliente_dict(row, visitas, beneficios_list):
     total_visitas = len(visitas)
-    beneficios_ganados = total_visitas // PUNTOS_BENEFICIO
-    pts_ciclo = total_visitas % PUNTOS_BENEFICIO
-    tiene_beneficio = beneficios_ganados > beneficios_usados_count
-    ultima = visitas[-1]["fecha"] if visitas else None
-    gasto_total = sum(v["monto"] or 0 for v in visitas)
+    ultima = None
+    if visitas:
+        v = visitas[-1]
+        ultima = f"{v['fecha']} {v.get('hora','00:00')}"
+    premios = calcular_premios(total_visitas, beneficios_list)
     return {
         "id": row["id"],
         "nombre": row["nombre"],
         "telefono": row["telefono"],
         "fecha_reg": row["fecha_reg"],
         "total_visitas": total_visitas,
-        "pts_ciclo": pts_ciclo,
-        "puntos_para_beneficio": PUNTOS_BENEFICIO,
-        "beneficios_ganados": beneficios_ganados,
-        "beneficios_usados": beneficios_usados_count,
-        "tiene_beneficio": tiene_beneficio,
         "ultima_visita": ultima,
-        "gasto_total": gasto_total,
+        **premios,
         "visitas": visitas,
     }
 
@@ -110,10 +158,10 @@ class VisitaCreate(BaseModel):
 
 class BeneficioUsar(BaseModel):
     sucursal: Optional[str] = "general"
+    tipo: Optional[str] = "promocion"
 
 @app.get("/api/codigo-hoy")
 def codigo_hoy():
-    """Solo para el panel del cajero"""
     return {"codigo": generar_codigo_dia(), "fecha": hoy()}
 
 @app.get("/api/clientes/buscar")
@@ -126,12 +174,13 @@ def buscar_cliente(telefono: str):
     if not row:
         cur.close(); conn.close()
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    cur.execute("SELECT * FROM visitas WHERE cliente_id = %s ORDER BY fecha", (row["id"],))
+    cur.execute("SELECT id, fecha, hora, sucursal, monto FROM visitas WHERE cliente_id = %s ORDER BY fecha, hora", (row["id"],))
     visitas = fetch_all(cur)
-    cur.execute("SELECT COUNT(*) as n FROM beneficios_usados WHERE cliente_id = %s", (row["id"],))
-    bu = cur.fetchone()[0]
+    cur.execute("SELECT tipo FROM beneficios_usados WHERE cliente_id = %s", (row["id"],))
+    rows = cur.fetchall()
+    beneficios_list = [{"tipo": r[0]} for r in rows]
     cur.close(); conn.close()
-    return cliente_dict(row, visitas, bu)
+    return cliente_dict(row, visitas, beneficios_list)
 
 @app.post("/api/clientes", status_code=201)
 def crear_cliente(data: ClienteCreate):
@@ -149,17 +198,18 @@ def crear_cliente(data: ClienteCreate):
         (data.nombre.strip(), tel, hoy())
     )
     cliente_id = cur.fetchone()[0]
+    hora_actual = datetime.datetime.now().strftime("%H:%M")
     cur.execute(
-        "INSERT INTO visitas (cliente_id, fecha, sucursal, monto) VALUES (%s,%s,%s,%s)",
-        (cliente_id, hoy(), data.sucursal, 0)
+        "INSERT INTO visitas (cliente_id, fecha, hora, sucursal, monto) VALUES (%s,%s,%s,%s,%s)",
+        (cliente_id, hoy(), hora_actual, data.sucursal, 0)
     )
     conn.commit()
     cur.execute("SELECT * FROM clientes WHERE id = %s", (cliente_id,))
     row = fetch_one(cur)
-    cur.execute("SELECT * FROM visitas WHERE cliente_id = %s ORDER BY fecha", (cliente_id,))
+    cur.execute("SELECT id, fecha, hora, sucursal, monto FROM visitas WHERE cliente_id = %s ORDER BY fecha, hora", (cliente_id,))
     visitas = fetch_all(cur)
     cur.close(); conn.close()
-    return cliente_dict(row, visitas, 0)
+    return cliente_dict(row, visitas, [])
 
 @app.post("/api/clientes/{cliente_id}/visita")
 def registrar_visita(cliente_id: int, data: VisitaCreate):
@@ -172,31 +222,36 @@ def registrar_visita(cliente_id: int, data: VisitaCreate):
     if not row:
         cur.close(); conn.close()
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    # Verificar última visita — mínimo 60 minutos
     cur.execute(
-        "SELECT fecha FROM visitas WHERE cliente_id = %s ORDER BY fecha DESC LIMIT 1", (cliente_id,)
+        "SELECT fecha, hora FROM visitas WHERE cliente_id = %s ORDER BY fecha DESC, hora DESC LIMIT 1",
+        (cliente_id,)
     )
     ultima = cur.fetchone()
-    if ultima and ultima[0] == hoy():
-        cur.execute("SELECT * FROM visitas WHERE cliente_id = %s ORDER BY fecha", (cliente_id,))
-        visitas = fetch_all(cur)
-        cur.execute("SELECT COUNT(*) FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
-        bu = cur.fetchone()[0]
-        cur.close(); conn.close()
-        result = cliente_dict(row, visitas, bu)
-        result["nueva_visita"] = False
-        return result
-    cur.execute(
-        "INSERT INTO visitas (cliente_id, fecha, sucursal, monto) VALUES (%s,%s,%s,%s)",
-        (cliente_id, hoy(), data.sucursal, data.monto)
-    )
-    conn.commit()
-    cur.execute("SELECT * FROM visitas WHERE cliente_id = %s ORDER BY fecha", (cliente_id,))
+    nueva_visita = True
+    if ultima:
+        ultima_str = f"{ultima[0]} {ultima[1]}"
+        mins = minutos_desde(ultima_str)
+        if mins < MINUTOS_ENTRE_VISITAS:
+            nueva_visita = False
+
+    if nueva_visita:
+        hora_actual = datetime.datetime.now().strftime("%H:%M")
+        cur.execute(
+            "INSERT INTO visitas (cliente_id, fecha, hora, sucursal, monto) VALUES (%s,%s,%s,%s,%s)",
+            (cliente_id, hoy(), hora_actual, data.sucursal, data.monto)
+        )
+        conn.commit()
+
+    cur.execute("SELECT id, fecha, hora, sucursal, monto FROM visitas WHERE cliente_id = %s ORDER BY fecha, hora", (cliente_id,))
     visitas = fetch_all(cur)
-    cur.execute("SELECT COUNT(*) FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
-    bu = cur.fetchone()[0]
+    cur.execute("SELECT tipo FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
+    rows = cur.fetchall()
+    beneficios_list = [{"tipo": r[0]} for r in rows]
     cur.close(); conn.close()
-    result = cliente_dict(row, visitas, bu)
-    result["nueva_visita"] = True
+    result = cliente_dict(row, visitas, beneficios_list)
+    result["nueva_visita"] = nueva_visita
     return result
 
 @app.post("/api/clientes/{cliente_id}/usar-beneficio")
@@ -208,23 +263,28 @@ def usar_beneficio(cliente_id: int, data: BeneficioUsar):
     if not row:
         cur.close(); conn.close()
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    cur.execute("SELECT * FROM visitas WHERE cliente_id = %s ORDER BY fecha", (cliente_id,))
+    cur.execute("SELECT id, fecha, hora, sucursal, monto FROM visitas WHERE cliente_id = %s ORDER BY fecha, hora", (cliente_id,))
     visitas = fetch_all(cur)
-    cur.execute("SELECT COUNT(*) FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
-    bu = cur.fetchone()[0]
-    ganados = len(visitas) // PUNTOS_BENEFICIO
-    if ganados <= bu:
+    cur.execute("SELECT tipo FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
+    rows = cur.fetchall()
+    beneficios_list = [{"tipo": r[0]} for r in rows]
+    premios = calcular_premios(len(visitas), beneficios_list)
+    if data.tipo == "postre" and not premios["tiene_postre"]:
         cur.close(); conn.close()
-        raise HTTPException(status_code=400, detail="Sin beneficio disponible")
+        raise HTTPException(status_code=400, detail="Sin postre disponible")
+    if data.tipo == "promocion" and not premios["tiene_promocion"]:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=400, detail="Sin promoción disponible")
     cur.execute(
-        "INSERT INTO beneficios_usados (cliente_id, fecha, sucursal) VALUES (%s,%s,%s)",
-        (cliente_id, hoy(), data.sucursal)
+        "INSERT INTO beneficios_usados (cliente_id, fecha, tipo, sucursal) VALUES (%s,%s,%s,%s)",
+        (cliente_id, hoy(), data.tipo, data.sucursal)
     )
     conn.commit()
-    cur.execute("SELECT COUNT(*) FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
-    bu2 = cur.fetchone()[0]
+    cur.execute("SELECT tipo FROM beneficios_usados WHERE cliente_id = %s", (cliente_id,))
+    rows2 = cur.fetchall()
+    beneficios_list2 = [{"tipo": r[0]} for r in rows2]
     cur.close(); conn.close()
-    return cliente_dict(row, visitas, bu2)
+    return cliente_dict(row, visitas, beneficios_list2)
 
 @app.get("/api/admin/resumen")
 def resumen():
@@ -243,12 +303,7 @@ def resumen():
     """)
     top = fetch_all(cur)
     cur.close(); conn.close()
-    return {
-        "total_clientes": total,
-        "visitas_hoy": visitas_hoy,
-        "total_visitas": total_visitas,
-        "top_clientes": top,
-    }
+    return {"total_clientes": total, "visitas_hoy": visitas_hoy, "total_visitas": total_visitas, "top_clientes": top}
 
 @app.get("/cajero", response_class=HTMLResponse)
 def serve_cajero():
