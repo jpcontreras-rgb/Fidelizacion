@@ -5,6 +5,10 @@ from pydantic import BaseModel
 from typing import Optional
 import sqlite3, os, datetime
 
+ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+   INDEX_PATH = os.path.join(STATIC_DIR, "index.html")
+   os.makedirs(STATIC_DIR, exist_ok=True)
+
 app = FastAPI()
 
 DB_PATH = os.environ.get("DB_PATH", "clientes.db")
@@ -243,4 +247,9 @@ def resumen():
 
 
 # Sirve el frontend
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+   @app.get("/", response_class=HTMLResponse)
+   def serve_index():
+       if os.path.exists(INDEX_PATH):
+           with open(INDEX_PATH, "r", encoding="utf-8") as f:
+               return HTMLResponse(content=f.read())
+       return HTMLResponse(content="<h1>OK</h1>", status_code=200)
