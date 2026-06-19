@@ -27,12 +27,17 @@ def init_db():
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
-            id        SERIAL PRIMARY KEY,
-            nombre    TEXT NOT NULL,
-            telefono  TEXT NOT NULL UNIQUE,
-            fecha_reg TEXT NOT NULL
+            id               SERIAL PRIMARY KEY,
+            nombre           TEXT NOT NULL,
+            telefono         TEXT NOT NULL UNIQUE,
+            fecha_reg        TEXT NOT NULL,
+            fecha_nacimiento TEXT
         )
     """)
+    try:
+        cur.execute("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS fecha_nacimiento TEXT")
+    except:
+        pass
     cur.execute("""
         CREATE TABLE IF NOT EXISTS visitas (
             id         SERIAL PRIMARY KEY,
@@ -134,11 +139,21 @@ def cliente_dict(row, visitas, beneficios_list):
         v = visitas[-1]
         ultima = f"{v['fecha']} {v.get('hora','00:00')}"
     premios = calcular_premios(total_visitas, beneficios_list)
+    es_cumple = False
+    if row.get("fecha_nacimiento"):
+        try:
+            fn = row["fecha_nacimiento"]  # formato YYYY-MM-DD
+            hoy_str = hoy()
+            es_cumple = fn[5:] == hoy_str[5:]  # compara MM-DD
+        except:
+            pass
     return {
         "id": row["id"],
         "nombre": row["nombre"],
         "telefono": row["telefono"],
         "fecha_reg": row["fecha_reg"],
+        "fecha_nacimiento": row.get("fecha_nacimiento"),
+        "es_cumpleanos": es_cumple,
         "total_visitas": total_visitas,
         "ultima_visita": ultima,
         **premios,
@@ -150,6 +165,7 @@ class ClienteCreate(BaseModel):
     telefono: str
     sucursal: Optional[str] = "general"
     codigo: str
+    fecha_nacimiento: Optional[str] = None
 
 class VisitaCreate(BaseModel):
     sucursal: Optional[str] = "general"
@@ -194,8 +210,8 @@ def crear_cliente(data: ClienteCreate):
         cur.close(); conn.close()
         raise HTTPException(status_code=409, detail="Telefono ya registrado")
     cur.execute(
-        "INSERT INTO clientes (nombre, telefono, fecha_reg) VALUES (%s,%s,%s) RETURNING id",
-        (data.nombre.strip(), tel, hoy())
+        "INSERT INTO clientes (nombre, telefono, fecha_reg, fecha_nacimiento) VALUES (%s,%s,%s,%s) RETURNING id",
+        (data.nombre.strip(), tel, hoy(), data.fecha_nacimiento)
     )
     cliente_id = cur.fetchone()[0]
     hora_actual = datetime.datetime.now().strftime("%H:%M")
