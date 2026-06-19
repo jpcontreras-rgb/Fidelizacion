@@ -125,10 +125,15 @@
           <div class="chip" data-suc="mut" onclick="selSucursal(this)">MUT (Santiago)</div>
         </div>
       </div>
+      <div class="campo">
+        <label for="inp-nacimiento">Fecha de nacimiento <span style="font-size:11px;color:#aaa;">(opcional)</span></label>
+        <input type="date" id="inp-nacimiento" style="height:44px;font-size:15px;">
+        <p style="font-size:11px;color:#aaa;margin-top:5px;">🎂 La usamos para enviarte un obsequio en tu cumpleaños</p>
+      </div>
       <button class="btn btn-negro" onclick="registrar()">Unirme al club</button>
       <button class="btn btn-outline" onclick="volverTelefono()">← Volver</button>
       <p class="error-msg" id="err-reg"></p>
-      <p class="privacidad">Al registrarte aceptas que guardemos tu nombre y teléfono para gestionar tus puntos.</p>
+      <p class="privacidad">Al registrarte aceptas que guardemos tu nombre, teléfono y fecha de nacimiento para gestionar tus puntos y beneficios.</p>
     </div>
 
     <div class="view" id="view-loading">
@@ -196,7 +201,7 @@ async function registrar(){
   try{
     const res=await fetch(`${API}/api/clientes`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({nombre,telefono:telefonoActual,sucursal:sucursalSeleccionada,codigo:codigoActual})
+      body:JSON.stringify({nombre,telefono:telefonoActual,sucursal:sucursalSeleccionada,codigo:codigoActual,fecha_nacimiento:document.getElementById('inp-nacimiento').value||null})
     });
     if(res.status===403){err.textContent='Código incorrecto.';show('view-registro');return;}
     if(res.status===409){err.textContent='Ese teléfono ya está registrado.';show('view-registro');return;}
@@ -240,12 +245,13 @@ function renderTarjeta(c,nuevaVisita){
     }
   }).join('');
 
+  const alertaCumple=c.es_cumpleanos?`<div class="alerta" style="background:#fdf0f8;border:1.5px solid #d4537e;margin-bottom:12px;"><div class="alerta-icon">🎂</div><div><div class="alerta-titulo" style="color:#72243e;">¡Feliz cumpleaños!</div><div class="alerta-texto" style="color:#72243e;">Hoy tienes un obsequio esperándote. ¡Muéstrale esta pantalla al cajero!</div></div></div>`:'';
   const alertaNueva=nuevaVisita?`<div class="alerta alerta-verde"><div class="alerta-icon">✅</div><div><div class="alerta-titulo">¡Visita registrada!</div><div class="alerta-texto">Sumaste 1 punto. Llevas ${c.total_visitas} en total.</div></div></div>`:'';
   const alertaPostre=c.tiene_postre?`<div class="alerta alerta-amarilla"><div class="alerta-icon">🍮</div><div><div class="alerta-titulo">¡Tienes un postre gratis!</div><div class="alerta-texto">Muéstrale esta pantalla al cajero para canjearlo.</div></div></div>`:'';
   const alertaPromo=c.tiene_promocion?`<div class="alerta alerta-azul"><div class="alerta-icon">🎁</div><div><div class="alerta-titulo">¡Tienes una promoción con bebida!</div><div class="alerta-texto">Muéstrale esta pantalla al cajero para canjearlo.</div></div></div>`:'';
 
   document.getElementById('tarjeta-contenido').innerHTML=`
-    ${alertaNueva}${alertaPostre}${alertaPromo}
+    ${alertaCumple}${alertaNueva}${alertaPostre}${alertaPromo}
     <div class="tarjeta-header">
       <div class="avatar">${iniciales(c.nombre)}</div>
       <div><div class="tarjeta-nombre">${c.nombre}</div><span class="nivel-badge ${nivelClaseStr}">${nivelNombre}</span></div>
