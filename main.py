@@ -6,11 +6,13 @@ import sqlite3, os, datetime
 
 app = FastAPI()
 
+# Usa /tmp que siempre tiene permisos de escritura en Railway
+DB_PATH = os.environ.get("DB_PATH", "/tmp/clientes.db")
+
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 INDEX_PATH = os.path.join(STATIC_DIR, "index.html")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-DB_PATH = os.environ.get("DB_PATH", "clientes.db")
 PUNTOS_BENEFICIO = 10
 
 def get_db():
@@ -228,4 +230,4 @@ def serve_index():
     if os.path.exists(INDEX_PATH):
         with open(INDEX_PATH, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
-    return HTMLResponse(content="<h1>App Schwencke OK - sube static/index.html</h1>")
+    return HTMLResponse(content="<h1>Schwencke Fidelizacion - OK</h1>")
